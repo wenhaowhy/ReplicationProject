@@ -1,6 +1,6 @@
 ---
 title: Replicating "The 52-week High and Momentum Investing" by George and Hwang (2004)
-author: Wenhao and Olena
+author: Wenhao Yu and Olena Ostasheva
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
