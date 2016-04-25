@@ -19,7 +19,7 @@ data(yearly)
 gather.data <- function(symbols, years){
 
         require(ws.data)
-        rename()
+
         gathered <- data.frame()
 
         for( i in years ){
