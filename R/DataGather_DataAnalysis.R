@@ -14,10 +14,12 @@ data(yearly)
 
 
 #gather the data
+#How can we organize this into one function along with adding secref and yearly
 
 gather.data <- function(symbols, years){
 
         require(ws.data)
+        rename()
         gathered <- data.frame()
 
         for( i in years ){
@@ -27,54 +29,127 @@ gather.data <- function(symbols, years){
 
                 gathered <- rbind(gathered, subset(eval(parse(text=file.name)), symbol %in% symbols))
         }
+
+        gathered <- rename(gathered, date = v.date)
+
+        gathered <- left_join(select(gathered,id,symbol,date,price,tret), select(secref, id, m.ind), by = "id")
+
+        gathered <- left_join(mutate(gathered, year = lubridate::year(date), month = paste(lubridate::month(date, TRUE, TRUE), year, sep = "-")),
+                 select(yearly, id, year, top.1500),
+                 by = c("year", "id"))
+
+        gathered<-tbl_df(gathered)
         invisible(gathered)
 }
 
-"""Example of how gather.data works
-A <- daily.1998
-B <- daily.1999
-C <- daily.2000
-X <- c("A", "B", "C")
-parse(text=X[1])
-ex_daily1998<-eval(parse(text=X[1]))
-head(ex_daily1998)
-"""
 
-#Use grabbed function to open data
+
+#Open and save the data
 x<-gather.data(symbols=secref$symbol,1998:2007)
+View(head(x,100))
 save(x, file="gather.Rdata")
 f<-file.choose()
-load(f)
 
+#Check whether data makes sense
+#Notice: max(tret) is 499 (no sense), think how to deal with this
 summary(x)
 View(head(x))
 
-#use dplyr package to make the data frame tbl_df to avoid printing a lot of data on the screen
-x<-tbl_df(x)
-y<-tbl_df(yearly)
 
-#make 2 addisional columns: a year and a month-year column
-x <- mutate(x, year = lubridate::year(v.date),
-               month = paste(lubridate::month(v.date, TRUE, TRUE), year, sep = "-"))
+"""MG startegy"""
 
-#check whether the 2 columns are present
-View(head(x))
+#Rank the industry returns using MG function
+#Take care of NAs
 
-#merge daily data with yearly by year and id
-x <- left_join(select(x, v.date, month, year, symbol, id, tret, price, price.unadj,year),
-               select(y, id, year, top.1500),
-               by = c("year", "id")) %>%
-               filter(top.1500) %>% tbl_df()
-
-View(head(x))
-
-#merge with secref to get industry data and arrange by date and symbol
-x <- left_join(x, select(secref, id, name, m.sec, m.ind), by = "id") %>%
-              arrange(v.date, symbol)
-View(head(x,100))
+MG.Data <- function(data.x) {
+    data.x %>%
+        group_by(m.ind) %>%
+        arrange(m.ind, date) %>%
+        mutate(ind_ret = roll_mean(tret)) %>%
+        filter(row_number(date)==n()) %>% #use dplyr
+        ungroup() %>%
+        mutate(ind_rank = row_number(desc(ind_ret))) %>%
+        select(m.ind, ind_ret, ind_rank) %>%
+        arrange(ind_rank)
+}
 
 
+View(MG.Data)
 
+#Function for (6,6) strategy
+#At the beginning of each month (t) stocks are ranked in ascending order according to their industry past performance
+#winner:stocks in the top 30% of industries
+#loosers:stocks in the bottom 30% of industries
+
+
+data.6.0 <- function(data.x) {
+
+        #filter by last day of the month and allow only unique dates
+        anchors<-unique(data.x %>% group_by(month) %>%
+                                filter(min_rank(desc(date)) == 1) %>%
+                                filter(top.1500))
+
+        anchors<-as.Date(data.x$date)
+
+        #inititate the loop to calculate 125 before
+        for (i in 1:length(anchors)){
+                anchor<-anchors[i]
+
+                date1<-anchor-125
+                date1<-as.Date(date1)
+
+                date2<-anchor+0
+                date2<-as.Date(date2)
+        }
+
+        data.x <- filter(data.x$date, date>= date1, date<= date2)
+
+        invisible(data.x)
+}
+
+
+#Return for MG
+#30% of top industries --> 21 industries
+
+
+
+MG.6.0.ret <- function(data.x) {
+
+        data1 <- data.6.0(data.x)
+
+        #rank the date according to the previous 6 months of performance
+        rank <- MG.Data(data1)
+
+        #filter out 21 best performing industry(30% out of 69 industries)
+        winners <- filter(rank, ind_rank<=21)
+        #filter out 21 worst performing industry
+        losers <- filter(rank, ind_rank>=48)
+
+        data1  %>%
+                select(-top.1500, -id, -year) %>%
+                filter(m.ind %in% winners) %>% #take out all the winner industries
+                group_by(symbol) %>%
+                arrange(symbol, date) %>% #group and arrange by symbol and date
+                mutate(cum_ret = cumprod(1+tret) - 1) -> winner.ret #find cumilative return
+
+        mean(winner.ret$cum_ret) -> winner_portfolio #find the mean of the returns for all the stocks in each winner industry
+
+        #repeat for looser portfolio
+        data1  %>%
+                select(-top.1500, -id, -year) %>%
+                filter(m.ind %in% losers) %>%
+                group_by(symbol) %>%
+                arrange(symbol, date) %>%
+                mutate(cum_ret = cumprod(1+tret) - 1) -> looser.ret
+
+        mean(looser.ret2$cum_ret) -> looser_portfolio
+
+        #give out a table of winner and looser portfolios
+        result <- c(winner_portfolio, looser_portfolio)
+        invisible(result)
+}
+
+"""
 #Find monthly returns
 #Error: expecting a single value (if use summarize)!
 #How to arrange according to the total return?
@@ -87,171 +162,5 @@ View(head(monthly.ret))
 
 View(head(monthly.ret))
 summary(monthly.ret)
-
-
-"""MG startegy"""
-
-#Rank the industries using MG function
-#Take care of NAs
-MG.Data <- function(data.x) {
-    data.x %>%
-        group_by(m.ind) %>%
-        arrange(m.ind, v.date) %>%
-        mutate(ind_ret = roll_mean(tret)) %>%
-        filter(row_number(v.date)==n()) %>%
-        ungroup() %>%
-        mutate(ind_rank = row_number(desc(ind_ret))) %>%
-        select(m.ind, ind_ret, ind_rank) %>%
-        arrange(ind_rank)
-}
-
-View(MG.Data)
-
-#Function for (6,6) strategy
-
-data.6.6 <- function(yyyy, mm, pro, data) {
-
-        date1 <- ceiling_date((ymd(paste(yyyy,mm,days_in_month(mm),sep="-")) %m+%
-                                       months(-pro)), "month") - duration(1, "days")
-        date2 <- (ymd(paste(yyyy,mm,01,sep="-")) %m+% months(-pro-5)) #past 6 months
-
-        date1 <- as.Date(date1)
-        date2 <- as.Date(date2)
-
-        data <- filter(data, v.date<= date1, v.date>= date2)
-
-        invisible(data)
-}
-
-#Return for MG
-#30% of top industries --> 21 industries
-
-
-Top.1500 <- function(yyyy,mm,pro,data) {
-        avail <- NULL
-        yeartime <- year(ymd(paste(yyyy,mm,01,sep="-")) %m+% months(-pro))
-
-        avail <- filter(yearly, year==yeartime, top.1500)
-
-        stock_list <- unique(avail$id)
-
-        data <- filter(data, id %in% stock_list, tret<2, tret>-2)
-
-        data <- mutate(data, month = month(v.date), year = year(v.date))
-
-        invisible(data)
-}
-
-
-
-MG.6.6.ret <- function(yyyy, mm, pro, data) {
-        data1 <- Top.1500(yyyy, mm, pro, data)
-        data2 <- data.6.6(yyyy, mm, pro, data1)
-        data_now <- filter(data1,
-                           month==mm,
-                           year==yyyy)
-        rank <- MG.Data(data2)
-
-        winner_list <- filter(rank, ind_rank<=21)
-        loser_list <- filter(rank, ind_rank>=48)
-        data_now  %>%
-                select(-top.1500, -id, -year) %>%
-                filter(m.ind %in% winner_list) %>%
-                group_by(symbol) %>%
-                arrange(symbol, v.date) %>%
-                mutate(cum_ret = cumprod(1+tret) - 1) %>%
-                filter(row_number(v.date) == n()) -> return1
-        mean(return1$cum_ret) -> result1
-        data_now  %>%
-                select(-top.1500, -id, -year) %>%
-                filter(m.ind %in% loser_list) %>%
-                group_by(symbol) %>%
-                arrange(symbol, v.date) %>%
-                mutate(cum_ret = cumprod(1+tret) - 1) %>%
-                filter(row_number(v.date) == n()) -> return2
-        mean(return2$cum_ret) -> result2
-        result <- c(result1, result2)
-        invisible(result)
-}
-
-
-MG.Year.ret <- function(yyyy) {
-        data <- x
-        month_tab <- NULL
-        return_table <- NULL
-        for (i in 1:12) {
-                mm <- i
-                for (pro in 1:6) {
-                        a <- MG.6.6.ret(yyyy,mm,pro,data)
-                        month_tab <- rbind(month_tab, a)
-                }
-                return_table <- rbind(return_table,
-                                      c(mean(month_tab[,1]),mean(month_tab[,2])))
-                month_tab <- NULL
-        }
-        return(return_table)
-}
-
-f<-MG.Year.ret(1999)
-View(head(f,100))
-
-Run <- function() {
-        year_ret <- NULL
-        total_ret <- NULL
-        for (yy in 2000:2007) {
-                year_ret <- MG.Year.ret(yy)
-                total_ret <- rbind(total_ret, year_ret)
-        }
-        return(total_ret)
-}
-
-r<-Run()
-
-monthly.ret.new <- monthly.ret %>% group_by(year, symbol) %>% summarize(ret.0.12.m = cumprod(ret.0.1.m+1)-1)
-
-six_month_data <- mutate(x, six_month = paste(lubridate::month(v.date, TRUE, TRUE)))
-
-d<-filter(monthly.ret,symbol=="MSFT")
-View(d)
-arrange(d, month)
-
-
-#Find 6 months past return
-x <- x %>% group_by(symbol) %>%
-        mutate(six_month_ret = roll_mean(ret.0.1.m, 6, fill = NA))
-View(tail(x,300))
-
-
-
-
-
-
-
-
-"""
-#Finding the 52 week high
-x <- x %>% group_by(symbol) %>%
-        mutate(yearly52high = max(price.unadj, 250, fill = NA))
-View(head(x))
-
-highest_price <- x %>% group_by(month) %>%
-        filter(min_rank(desc(v.date)) == 1) %>%
-        filter(top.1500) %>%
-        mutate(sd.class = ntile(yearly52high, n = 5))
-
-monthly.price <- mutate(highest_price,
-                     month.plus.1 = paste(lubridate::month(v.date + 10, TRUE, TRUE),
-                                          lubridate::year(v.date + 10), sep = "-"))
-summary(monthly.price)
-
-all <- left_join(select(monthly.price, - month), monthly.ret,
-                 by = c("symbol", c("month.plus.1" = "month"))) %>% ungroup()
-
-all <-  filter(all, ! is.na(yearly52high))  %>%
-        group_by(month.plus.1) %>%
-        select(v.date, month.plus.1, sd.class, ret.0.1.m, top.1500) %>%
-        ungroup() %>% ## Needed to do the arrange correctly for entire data.
-        arrange(v.date)
-summary(all)
 """
 
