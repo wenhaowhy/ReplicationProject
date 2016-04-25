@@ -64,13 +64,12 @@ View(head(x))
 MG.Data <- function(data.x) {
     data.x %>%
         group_by(m.ind) %>%
-        arrange(m.ind, date) %>%
-        mutate(ind_ret = roll_mean(tret)) %>%
-        filter(row_number(date)==n()) %>% #use dplyr
+        arrange(m.ind, date) %>% #group and arrange by industry and date within each industry
+        mutate(ind_ret = roll_mean(tret)) %>% #find industry returns by finding the rolling mean of all the stocks in each industry
         ungroup() %>%
-        mutate(ind_rank = row_number(desc(ind_ret))) %>%
-        select(m.ind, ind_ret, ind_rank) %>%
-        arrange(ind_rank)
+        mutate(ind_rank = row_number(desc(ind_ret))) %>% #create the column called insutry return
+        select(m.ind, ind_ret, ind_rank) %>% #select the columns to spit out for R
+        arrange(ind_rank) #arrange by industry rank
 }
 
 
@@ -91,18 +90,18 @@ data.6.0 <- function(data.x) {
 
         anchors<-as.Date(data.x$date)
 
-        #inititate the loop to calculate 125 before
+        #inititate the loop to calculate 125 days before for each date
         for (i in 1:length(anchors)){
                 anchor<-anchors[i]
 
-                date1<-anchor-125
+                date1<-anchor-125 #for each day substract 125 days (~6 months)
                 date1<-as.Date(date1)
 
                 date2<-anchor+0
                 date2<-as.Date(date2)
         }
 
-        data.x <- filter(data.x$date, date>= date1, date<= date2)
+        data.x <- filter(data.x$date, date>= date1, date<= date2) #find the 6 months period
 
         invisible(data.x)
 }
@@ -110,8 +109,7 @@ data.6.0 <- function(data.x) {
 
 #Return for MG
 #30% of top industries --> 21 industries
-
-
+#30% of bottom industries --> 21 industries
 
 MG.6.0.ret <- function(data.x) {
 
