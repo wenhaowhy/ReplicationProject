@@ -147,6 +147,79 @@ MG.6.0.ret <- function(data.x) {
         invisible(result)
 }
 
+
+
+
+##This is a function that calculates the 52 week high prices and
+##dates of every date in the dataset.
+calc.52wkh<- function(x) {
+
+        ##find list of unique end-of-month dates (jan-dec) from 1998 to 2007
+        initial.date <- unique(monthly.sd$date)
+} ##creates loop that works from the first row of the dates to the last of the dates (#length of vector)
+##of the dataframe.
+for(i in 1:length(initial.date)) {
+
+        n <- initial.date[i]
+
+        ##to create a 52 week period, an initial start date and end date is constructed.
+        ##start date is 365 days from picked date, and the end date is the picked date.
+        ##should I use end of month date or just regular date?
+        start.date <- n-365
+        end.date <- n
+
+        ##subset dates from x and make sure that start date is always less than initial date
+        ##and that initial date is the same or earlier than end date
+        x.dates<-filter(x, start.date<x$date & end.date<= end.date)
+
+        ##subset price from dataset.
+        prices <- x["price"]
+
+        ##combine price by symbol, order by max price per symbol.
+        y<-tapply(price, x$symbol, max)
+
+        ##organize dates by decreasing order.
+        dates <- sort(x$date, decreasing = TRUE)
+
+        ##allows loop to start at 1 and end at i, which equals the
+        ##length of the total dates in the dataset.
+        ##combines price and date.
+        y$date<-dates[1]
+
+        total <- leftjoin(prices, dates)
+
+        invisible(total)
+}
+}
+
+52wkratio <- function(x) {
+        ##this function calculates the 52 week ratio of (Pi, t-1) / (high i, t-1)
+        ##
+        52wkhighs <- calc.52wkh(x)
+        ##combine 52wk high with price symbol and date of normal dataset.
+        combined = leftjoin(52wkhighs, x$price, x$symbol, x$date)
+
+        combined$ratio = combined$price / combined$52wkhighs
+
+}
+
+
+
+
+##Create portfolio of 1/3 winners, 1/3 losers.
+##We can label the winners and losers based on the 52 week ratio.
+##develop an operation that ranks stocks based on highest to lowest 52 week ratio.
+##Label the first 1/3 of stocks in the rankings as "winnder" and the bottom 1/3 of stocks
+##as "losers".
+##Then we can long the winners and short the losers for a period of 6 months.
+##how to long winnders and short losers in this senario?
+
+
+
+
+
+
+
 """
 #Find monthly returns
 #Error: expecting a single value (if use summarize)!
