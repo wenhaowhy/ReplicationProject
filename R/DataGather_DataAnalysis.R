@@ -1,5 +1,4 @@
 
-install.packages("RcppRoll")
 
 library(ws.data)
 library(lubridate)
@@ -15,29 +14,33 @@ data(yearly)
 
 #gather the data
 #How can we organize this into one function along with adding secref and yearly
-
+#Get rid of extremely high prices
 gather.data <- function(symbols, years){
 
         require(ws.data)
 
         gathered <- data.frame()
 
+        #open up all the daily data files for years
         for( i in years ){
 
                 file.name <- paste("daily", i, sep = ".")
-                data(list = file.name)
+                data(list = file.name) #create a data list of daily files
 
                 gathered <- rbind(gathered, subset(eval(parse(text=file.name)), symbol %in% symbols))
         }
 
         gathered <- rename(gathered, date = v.date)
 
+        #join daily data with secref that contains industry returns
         gathered <- left_join(select(gathered,id,symbol,date,price,tret), select(secref, id, m.ind), by = "id")
 
+        #1) create a new column for Mon-Year variable and 2)attach existing data to yearly
         gathered <- left_join(mutate(gathered, year = lubridate::year(date), month = paste(lubridate::month(date, TRUE, TRUE), year, sep = "-")),
                  select(yearly, id, year, top.1500),
                  by = c("year", "id"))
 
+        #make gathered data a tbl_df for opening it
         gathered<-tbl_df(gathered)
         invisible(gathered)
 }
@@ -56,8 +59,8 @@ summary(x)
 View(head(x))
 
 
-"""MG startegy"""
 
+#MG startegy
 #Rank the industry returns using MG function
 #Take care of NAs
 
@@ -215,13 +218,53 @@ for(i in 1:length(initial.date)) {
 ##how to long winnders and short losers in this senario?
 
 
+#Find 52 week high
+#Arrange by symbol and date first
+#How to arrange the code so that we have the last
 
 
 
+x <- x %>% arrange(symbol, date)  %>% group_by(symbol) %>% mutate(price_52_wh = roll_max(price, 252, fill = NA, align = "right"))
+
+#Check whether 52-week high prices make sense
+#Get rid of
+summary(x)
+
+#Find the last trading day of the month
+monthly <- x %>% group_by(month) %>%
+        filter(min_rank(desc(date)) == 1)
+
+View(monthly)
+
+#Check the code
+filter(x,symbol=="IBM",date>"2005-01-01" & date<"2007-12-01") %>% ggplot() + geom_point(aes(date,price)) + geom_point(aes(date, price_52_wh), color = "red")
+
+d<-filter(x,symbol=="IBM", price==119.60, date>"2005-01-01" & date<"2007-12-01")
+View(d)
+
+#Compare 52 week high calculations to the Bloomberg data
+stopifnot(
+        round(subset(x, date == "2006-01-03" & symbol == "IBM", select = "price_52_wh"), 5) == ,
+        round(subset(x, date == "2007-08-06" & symbol == "GOOG", select = "price_52_wh"), 5) ==
+)
 
 
-"""
+#FInd the ratio and arrange in descneding order
+#Arrange the ratios in descenig order for each month
+monthly %>% group_by(date) %>%
+      mutate(ratio_52_wh=price/price_52_wh) %>%
+      arrange(desc(ratio_52_wh)) ->m
+
+#Check whether the size of the ratio makes sense (Max is 1 = good)
+View(m)
+summary(m)
+
+
+#Form the portfolios
+
+
 #Find monthly returns
+
 #Error: expecting a single value (if use summarize)!
 #How to arrange according to the total return?
 #What to do with all the NAs!?
