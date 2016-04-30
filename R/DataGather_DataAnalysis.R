@@ -78,13 +78,18 @@ View(d)
 #Find last day of the month returns
 #create portfolio
 #3 winners and 1 loosers
-monthly.ret<-x %>% group_by(month) %>%
-        filter(min_rank(desc(date)) == 1) %>%
+
+monthly_data<-function(x){
+
+        monthly <-x %>% group_by(month) %>%
+        filter(min_rank(desc(date)) == 1 & ! is.na(ret.6.0.m)) %>%
         filter(top.1500) %>%
         mutate(ret.class=ntile(ret.6.0.m,n=3)) %>%
-        arrange(date)
 
-View(monthly.ret)
+        return(monthly)
+}
+View(monthly.data)
+
 
 #filter dates to 6 months after the first dates became available, thus showing complete past 6-month returns.
 #c<-filter(monthly.ret,date>"1998-06-01")
@@ -109,94 +114,32 @@ losers.0.6.m <- loosers %>%
 
 
 
-####MG returns
+###########MG returns
 
 #Find industry returns and divide them into 3 classes depending on the industry returns
 
-monthly.ret %>%
-        select(-top.1500, -id, -year) %>%
-        filter(m.ind %in% winners) %>% #take out all the winner industries
-        group_by(symbol) %>%
-        arrange(symbol, date) %>% #group and arrange by symbol and date
-        mutate(cum_ret = cumprod(1+tret) - 1) -> winner.ret #find cumilative return
-
-mean(winner.ret$cum_ret) -> winner_portfolio #find the mean of the returns for all the stocks in each winner industry
-
-#repeat for looser portfolio
-data1  %>%
-        select(-top.1500, -id, -year) %>%
-        filter(m.ind %in% losers) %>%
-        group_by(symbol) %>%
-        arrange(symbol, date) %>%
-        mutate(cum_ret = cumprod(1+tret) - 1) -> looser.ret
-
-
-
-
-
-
-
-
-#Create portfolio for each month
-JT.Index <- function(data){
+MG<-function(data){
         data %>%
-                select(-top.1500, -m.ind, -id, -year) %>%
-                group_by(symbol) %>%
-                arrange(symbol, date)  %>%
-                filter(row_number(date) == n()) %>%
-                ungroup() %>%
-                mutate(stock_rank = row_number(ret.6.0.m)) %>%
-                select(symbol, ret.6.0.m, stock_rank,date) -> z1
-        invisible(z1)
-}
-
-JT.Index <- function(data){
-        data %>%
-                select(-top.1500, -m.ind, -id, -year) %>%
-                group_by(symbol) %>%
-                arrange(symbol, date)  %>%
-                mutate(cum_ret = cumprod(1+tret) - 1) %>%
-                filter(row_number(date) == n()) %>%
-                ungroup() %>%
-                mutate(cum_rank = row_number(cum_ret)) %>%
-                select(symbol, cum_ret, cum_rank) -> z1
-        invisible(z1)
-}
-
-
-
-
-j<-JT.Index(monthly.ret)
-View(j)
-
-
-
-View(monthly.ret)
-
-
-
-#MG strategy
-
-gathered<-gathered %>%
+        select(-top.1500, -year, -id, -symbol) %>%
         group_by(m.ind) %>%
-        arrange(m.ind, date) %>% #group and arrange by industry and date within each industry
-        mutate(ind.ret = roll_prod(tret)) %>% #find industry returns by finding the rolling mean of all the stocks in each industry
+        arrange(m.ind, date)  %>%
+        mutate(ind_ret = (tret), na.rm=TRUE) %>%
+        filter(row_number(date)==n()) %>%
         ungroup() %>%
-        mutate(ind_rank = row_number(desc(ind_ret))) %>% #create the column called insutry return
-        select(m.ind, ind_ret, ind_rank) %>% #select the columns to spit out for R
-        arrange(ind_rank) #arrange by industry rank
+        mutate(ind_rank = row_number(ind_ret)) %>%
+        select(m.ind, ind_ret, ind_rank)
+}
 
-#Check whether data makes sense
-#Notice: max(tret) is 499 (no sense), think how to deal with this
-summary(x)
-View(head(x))
-d<-filter(x, tret>2)
-View(d)
+MG.ind.ret<-MG(monthly.ret)
 
-max(x$price)
-###JT strategy
+#Find the top 30% and the bottom 30% of the industires
+#Form a new portfolio every month, hold for 6 months
 
+max(MG.ind.ret$ind_rank)
+winners_MG<-filter(MG.ind.ret,ind_rank<=23)
+losers_MG<-filter(MG.ind.ret,ind_rank>=46)
 
+#Calculate stock returns for the forward six months for winner/loser industries
 
 
 
