@@ -1,1 +1,5 @@
-exportPattern("^[[:alpha:]]+")
+
+export(clean_data)
+export(gather_daily)
+import(RcppRoll)
+import(dplyr)

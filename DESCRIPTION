@@ -1,10 +1,20 @@
 Package: ReplicationProject
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Partial Replication of the "52-week high and momentum investing" paper by George and Hwang (2004)
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Wenhao Yu and Olena Ostasheva
+Maintainer: oostasheva@middlebury.edu
+Description: We replicate 3 different momentum strategies to analyze whether the ratio of stock's current price to
+its 52-week price is a reliable predictor of the returns over the next 6 months.
+License: GPL-3
 LazyData: TRUE
 URL: https://github.com/olenaostasheva/
+Imports:  dplyr,
+          lubridate,
+          tibble,
+          tidyr,
+          gglopt2,
+          RcppRoll
+Suggests: knitr,
+          ws.data
+VignetteBuilder: knitr
