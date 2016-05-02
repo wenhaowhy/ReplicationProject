@@ -10,7 +10,7 @@ data(secref)
 data(yearly)
 
 
-#gather the data
+#Gather the data
 #Get rid of extremely high prices
 gather.data <- function(symbols, years){
 
@@ -75,9 +75,10 @@ View(d)
 
 
 ############ JT strategy
-#Find last day of the month returns
-#create portfolio
-#3 winners and 1 loosers
+#Find past and forward 6 months returns
+#Rank according to the past 6 months returns
+#Compare their forward 6 months returns
+#Do this for every last trading day of the month
 
 monthly_data<-function(x){
 
@@ -95,7 +96,7 @@ View(monthly.data)
 #c<-filter(monthly.ret,date>"1998-06-01")
 #View(c)
 
-#create a portfolio
+#Create a portfolio
 #winners' class is 3
 #loosers' class is 1
 winners<- filter(monthly.ret,ret.class==3)
@@ -116,7 +117,7 @@ losers.0.6.m <- loosers %>%
 
 ###########MG returns
 
-#Find industry returns and divide them into 3 classes depending on the industry returns
+#Find industry returns and and rank them
 
 MG<-function(data){
         data %>%
