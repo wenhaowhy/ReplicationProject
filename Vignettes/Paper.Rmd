@@ -1,0 +1,33 @@
+---
+title: "Partial Replication of the "52-week high and momentum investing" paper by George and Hwang (2004)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ws.data)
+library(lubridate)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(RcppRoll)
+data(secref)
+data(yearly)
+```
+
+
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

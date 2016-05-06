@@ -9,6 +9,7 @@ library(RcppRoll)
 data(secref)
 data(yearly)
 
+#' @return A data frame on stock-by-date info
 
 #Gather the data
 #Get rid of extremely high prices
@@ -18,7 +19,7 @@ gather.data <- function(symbols, years){
 
         gathered <- data.frame()
 
-        #open up all the daily data files for all years
+        #open up all the daily data files for all years using loop
         for( i in years ){
 
                 file.name <- paste("daily", i, sep = ".")
@@ -42,20 +43,33 @@ gather.data <- function(symbols, years){
         #make gathered data a tbl_df
         gathered<-tbl_df(gathered)
 
-        #clean data: get rid of stocks with high returns
-        #decide how to deal with 1) high prices (Berkshire) and 2) high returns
-        #gathered<-filter(gathered, ! symbol %in% c ())
-        #get rid of CHTM - was around for 4 months
+        #clean data: get rid of stocks with returns above 150%
+        #gets rid of 982 lines of code where tret is less than 15
+        gathered<-filter(gathered,tret<15)
 
         #find past and forward 6 months returns to be used later in calculations of
         # MG and JT strategies
         gathered<-gathered %>% group_by(symbol) %>%
+               arrange(date) %>%
                mutate(ret.6.0.m=roll_prod(tret+1, 126,fill=NA,align="right")-1) %>%
                mutate(ret.0.6.m=roll_prod(lead(tret,n=1)+1,126,fill=NA, align="left")-1) %>%
                ungroup()
 
+
+        # add a test case
+
+
+
         invisible(gathered)
 }
+
+
+summary(x$ret.6.0.m)
+
+x[which.max(x$ret.6.0.m),]
+
+
+x %>% filter(symbol=="CKXR") %>%ggplot(aes(x=date,price)) +geom_point()
 
 
 
@@ -64,28 +78,21 @@ x<-gather.data(symbols=secref$symbol,1998:2007)
 View(head(x,1000))
 summary(x)
 
-#Cleaning
-filter(x,symbol=="3STTCE", date>"1998-12-12" & date<"2007-01-01") %>% ggplot() + geom_point(aes(date,tret))
-m<-filter(x,symbol=="3STTCE")
-View(m)
-d<-filter(x,tret>15)
-View(d)
 
-
-
-
-############ JT strategy
-#Find past and forward 6 months returns
-#Rank according to the past 6 months returns
+############ JT STRATEGY
+#Rank stocks according to the past 6 months returns
+#Form a portfolio of winners with top 1/3 stocks with highest returns and a portfolio of losers
+#with 1/3 of stocks with lowest returns
 #Compare their forward 6 months returns
-#Do this for every last trading day of the month
+#Form a portfolio every last trading day of the month and holf it for 6 month
 
-monthly_data<-function(x){
+#Create a monfthly function for
+monthly.data<-function(x){
 
         monthly <-x %>% group_by(month) %>%
         filter(min_rank(desc(date)) == 1 & ! is.na(ret.6.0.m)) %>%
         filter(top.1500) %>%
-        mutate(ret.class=ntile(ret.6.0.m,n=3)) %>%
+        #mutate(ret.class=ntile(ret.6.0.m,n=3)) %>%
 
         return(monthly)
 }
@@ -114,6 +121,9 @@ losers.0.6.m <- loosers %>%
 #Do this for every 6 months
 
 
+library(tidyr)
+z %>% spread(key=sd.class,value=ret.0.1.m) %>% mutate(diff=High-Low) %>% select(date, High, Low, diff) #ask BEN
+
 
 ###########MG returns
 
@@ -131,6 +141,9 @@ MG<-function(data){
         select(m.ind, ind_ret, ind_rank)
 }
 
+
+group_by(date,m.ind)
+murate(ret = mean ret)
 MG.ind.ret<-MG(monthly.ret)
 
 #Find the top 30% and the bottom 30% of the industires
