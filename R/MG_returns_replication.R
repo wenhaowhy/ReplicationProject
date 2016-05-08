@@ -57,32 +57,41 @@ gather_data <- function(symbols, years){
 
 #2. Gather daily
 #Rank the stocks by the past industry returns
+#To do this, 1) find the industry returns which is the mean of the past 6 months returns of
+#all the stocks in each industry
 
-gather_daily_MG<-<- function(){
+gather_daily_MG<-function(){
 
-        x <- gather_data()
+        x <- gather_data(symbols=secref$symbol,1998:2007)
 
         #Find industry returns by finding the mean of the returns of all the stocks in each industry
         x<-x %>% group_by(m.ind) %>%
-                arrange(m.ind, date)  %>%
-                mutate(ind_ret = mean(ret.6.0.m), na.rm=TRUE) %>%
+                 arrange(m.ind, date)  %>%
+                 mutate(ind_ret = mean(ret.6.0.m))
 
-                #Get rid of NAs values
-                x <- filter(x, top.1500 & ! is.na(ind_ret))
+        #Get rid of NAs values
+        x <- filter(x, ! is.na(ind_ret))
 
         ## Create ind.class
         daily <- x %>% group_by(date) %>%
-                mutate(ret.class = as.character(ntile(ind_ret, n = 3))) %>%
-                mutate(ret.class = ifelse(ind.class == "1", "Losers_MG", ind.class)) %>%
-                mutate(ret.class = ifelse(ind.class == "3", "Winners_MG", ind.class)) %>%
-                mutate(ret.class = factor(ind.class, levels = c("Losers_MG", "2", "Winners_MG"))) %>%
+                mutate(ind.class = as.character(ntile(ind_ret, n = 3))) %>%
+                mutate(ind.class = ifelse(ind.class == "1", "Losers_MG", ind.class)) %>%
+                mutate(ind.class = ifelse(ind.class == "3", "Winners_MG", ind.class)) %>%
+                mutate(ind.class = factor(ind.class, levels = c("Losers_MG", "2", "Winners_MG"))) %>%
                 ungroup()
+
+        #get rid of the 2nd class, we only need Winners and Losers to form our portfolio
+        daily<-filter(daily, ind.class=="Winners_MG" & ind.class=="Losers_MG")
 
         ## ggplot(data = daily, aes(sd.class, log(sd.252.0.d))) + geom_violin() + facet_wrap(~ year)
 
 
         return(daily)
 }
+
+daily_returns<-gather_daily_MG()
+View(daily_returns)
+summary(daily_returns)
 
 #3. Gather daily returns into monthly, by selecting the last trading day of the month
 gather_monthly <- function(x){
@@ -94,9 +103,25 @@ gather_monthly <- function(x){
 
 monthly_returns<-gather_monthly(daily_returns)
 View(monthly_returns)
+summary(monthly_returns)
 
-
+#Later try exclusing top.1500 companies
 monthly_returns<-filter(monthly_returns,top.1500==TRUE)
 
 #4. Use monthly data to find the difference between winners and losers
 #Find the difference between the mean returns for Winners and Losers for each month
+
+#Find mean future returns for each month for winners and for losers
+win_minus_los<-monthly_returns %>%
+               group_by(month, m.ind, ind.class) %>%
+               summarize(mean_return=mean(ret.0.6.m))
+
+win_minus_los_final<-win_minus_los %>%
+               group_by(month) %>%
+               summarize(fin_mean_ret=mean_return[ind.class=="Winners_JT"] - mean_return[ind.class=="Losers_JT"])
+
+View(win_minus_los)
+View(win_minus_los_final)
+
+#on average, loser portfolio outperformed winner portfolio by 0.8%
+mean(win_minus_los_final$fin_mean_ret)

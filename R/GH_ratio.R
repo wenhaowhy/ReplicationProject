@@ -2,7 +2,6 @@
 #Arrange by symbol and date first
 #How to arrange the code so that we have the last
 
-
 #1. Find ratios
 GH_ratio <- function(){
 
