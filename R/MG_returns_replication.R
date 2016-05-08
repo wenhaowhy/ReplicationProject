@@ -65,10 +65,10 @@ gather_daily_MG<-function(){
         x <- gather_data(symbols=secref$symbol,1998:2007)
 
         #Find industry returns by finding the mean of the returns of all the stocks in each industry
-        x<-x %>% group_by(m.ind) %>%
-                 arrange(m.ind, date)  %>%
+        x<-x %>% group_by(m.ind,date) %>%
                  mutate(ind_ret = mean(ret.6.0.m))
 
+        #arrange(m.ind, date)
         #Get rid of NAs values
         x <- filter(x, ! is.na(ind_ret))
 
