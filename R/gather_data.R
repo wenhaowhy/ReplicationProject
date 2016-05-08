@@ -1,5 +1,5 @@
 
-gather.data <- function(symbols, years){
+gather_data <- function(symbols, years){
 
         require(ws.data)
 
@@ -34,7 +34,9 @@ gather.data <- function(symbols, years){
         #gathered<-filter(gathered, ! symbol %in% c ())
         #get rid of CHTM - was around for 4 months
         #gets rid of 982 lines of code where tret is less than 15
+        #filter out only top 1500 companies
         gathered<-filter(gathered,tret<15)
+        gethered<-filter(gathered, top.1500==TRUE)
 
         #find past and forward 6 months returns to be used later in calculations of
         # MG and JT strategies

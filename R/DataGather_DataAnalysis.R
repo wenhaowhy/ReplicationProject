@@ -9,6 +9,8 @@ library(RcppRoll)
 data(secref)
 data(yearly)
 
+install.packages("RcppRoll")
+
 #' @return A data frame on stock-by-date info
 
 #Gather the data
@@ -295,22 +297,4 @@ View(loosers)
 #Form the portfolios
 #How to get head(30% and tail 30% of the rows in each month?
 
-
-
-
-###########################################################
-#Find monthly returns
-
-#Error: expecting a single value (if use summarize)!
-#How to arrange according to the total return?
-#What to do with all the NAs!?
-
-
-monthly.ret <- x %>% group_by(month, symbol) %>% mutate(ret.0.1.m = cumprod(1+tret)-1)
-View(head(monthly.ret))
-
-
-View(head(monthly.ret))
-summary(monthly.ret)
-"""
 
