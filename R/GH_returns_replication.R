@@ -1,69 +1,101 @@
-#Calculating GH returns
+#Find 52 week high ratios
+#Arrange by symbol and date first
+#How to arrange the code so that we have the last
 
-#1. Gather the data
-gather_data <- function(symbols, years){
+#1. Find the 52 week high ratio
+gather_daily_GH <- function(data) {
+        data %>%
+                group_by(symbol) %>%
+                arrange(symbol, date) %>%
+                mutate(highest = roll_max(price, 252, fill = NA, align = "right")) %>%
+                ungroup() %>%
+                mutate(wh_52_ratio = price/highest) %>%
+                filter(!is.na(wh_52_ratio)) ->r
 
-        require(ws.data)
-
-        gathered <- data.frame()
-
-        #open up all the daily data files for all years
-        for( i in years ){
-
-                file.name <- paste("daily", i, sep = ".")
-                data(list = file.name) #create a data list of daily files
-
-                #combine all the daily data in a data frame
-                gathered <- rbind(gathered, subset(eval(parse(text=file.name)), symbol %in% symbols))
-        }
-
-        #rename v.date to date, makes more sense
-        gathered <- rename(gathered, date = v.date)
-
-        #join daily data with secref that contains industry returns
-        gathered <- left_join(select(gathered,id,symbol,date,price,tret), select(secref, id, m.ind), by = "id")
-
-        #1) create a new column for year and mon-year variable and 2)attach existing data to yearly
-        gathered <- left_join(mutate(gathered, year = lubridate::year(date), month = paste(lubridate::month(date, TRUE, TRUE), year, sep = "-")),
-                              select(yearly, id, year, top.1500),
-                              by = c("year", "id"))
-
-        #make gathered data a tbl_df
-        gathered<-tbl_df(gathered)
-
-        #clean data: get rid of stocks with high returns
-        #decide how to deal with 1) high prices (Berkshire) and 2) high returns
-        #gathered<-filter(gathered, ! symbol %in% c ())
-        #get rid of CHTM - was around for 4 months
-        #gets rid of 982 lines of code where tret is less than 15
-        #filter out only top 1500 companies
-        gathered<-filter(gathered,tret<15)
-        #gathered<-filter(gathered, top.1500==TRUE)
-
-        #find past and forward 6 months returns to be used later in calculations of
-        # MG and JT strategies
-        gathered<-gathered %>% group_by(symbol) %>%
-                mutate(ret.6.0.m=roll_prod(tret+1, 126,fill=NA,align="right")-1) %>%
-                mutate(ret.0.6.m=roll_prod(lead(tret,n=1)+1,126,fill=NA, align="left")-1) %>%
-                ungroup()
-
-
-        # add a test case
-
-
-
-        invisible(gathered)
+        invisible(r)
 }
 
-#2. Rank ratios
+
+ratios_daily_GH<-gather_daily_GH(x)
+
+#2. Rank the ratios.
+
+GH_rank<- function(data) {
+
+        data %>% group_by(date) %>%
+        mutate(wh.52.class = as.character(ntile(wh_52_ratio, n = 3))) %>%
+        mutate(wh.52.class= ifelse(wh.52.class == "1", "Losers_GH", wh.52.class)) %>%
+        mutate(wh.52.class = ifelse(wh.52.class == "3", "Winners_GH", wh.52.class)) %>%
+        mutate(wh.52.class = factor(wh.52.class, levels = c("Losers_GH", "2", "Winners_GH"))) %>%
+        ungroup()->r
+
+        invisible(r)
+        }
+
+daily_ranks_GH<-GH_rank(ratios_daily_GH)
+
+#3. Gather daily returns into monthly, by selecting the last trading day of the month
+
+gather_monthly <- function(x){
+        ## Filter out the last trading day of the month
+        monthly <- x %>% group_by(month) %>%
+                filter(min_rank(desc(date)) == 1)
+        return(monthly)
+}
+
+monthly_returns_GH<-gather_monthly(daily_ranks_GH)
+View(monthly_returns_GH)
+summary(monthly_returns)
+
+#4 Form a portfolio of winners and losers.
+#Calculate forward 6 months returns for each stock for the last tading day of each month
+
+monthly_returns %>% group_by(symbol, )
+
+GH.0.6.m.ret<- function(monthly_data){
+
+     r<-monthly_data %>%
+        spread(key=wh.52.class,value=ret.0.6.m) %>%
+        mutate(diff=Winners_GH-Losers_GH) %>%
+        select(date, Winners_GH, Losers_GH, diff)
+
+     return(r)
+}
+
+GHreturns<-GH.0.6.m.ret(monthly_returns_GH)
+View(GHreturns)
 
 
+win_minus_los<-monthly_returns_GH %>%
+        na.omit() %>%
+        group_by(month,wh.52.class) %>%
+        summarize(mean_return=mean(ret.0.6.m))
+View(win_minus_los)
 
-#Find 52 week high ratio
+r<-win_minus_los %>%
+        spread(key=wh.52.class,value=mean_return) %>%
+        mutate(diff=Winners_GH-Losers_GH) %>%
+        select(month, Winners_GH, Losers_GH, diff)
 
-ratio <- x %>% arrange(symbol, date)  %>%
-        group_by(symbol) %>%
-        mutate(price.52.wh = roll_max(price, 252, fill = numeric(0), align="right"))
-        #mutate(52.wh.ratio=price/price_52_wh)
-View(ratio)
-?roll_max
+#Mean of Winners returns over the years
+mean(r$Winners_GH)
+
+#Mean of Losers returns over the years
+mean(r$Losers_GH)
+
+#Mean of the difference in returns over the years
+mean(r$diff)
+
+View(r)
+
+#Graph the returns
+
+#Graph the SPREAD
+r %>% ggplot(aes(x=month,diff)) + scale_y_continuous(limits = c(-1,1))+geom_bar(stat="identity")
+
+#Graph the WINNERS
+r %>% ggplot(aes(x=month,Winners_GH)) + scale_y_continuous(limits = c(-1,1))+geom_bar(stat="identity")
+
+#Graphs the LOSERS
+r %>% ggplot(aes(x=month,Losers_GH)) + scale_y_continuous(limits = c(-1,1))+geom_bar(stat="identity")
+

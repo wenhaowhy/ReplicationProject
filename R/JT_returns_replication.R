@@ -74,7 +74,7 @@ gather_daily_JT <- function(){
                 ungroup()
 
         #Get rid of the 2 class, do not need it.
-        daily<-filter(daily,! is.na(ret.class==2))
+        daily<-filter(daily,ret.class=="Winners_JT" & ret.class=="Losers_JT")
 
         ## There are some outliers, but I am not
         ## sure they matter especially since we only use sd.class in the analysis.

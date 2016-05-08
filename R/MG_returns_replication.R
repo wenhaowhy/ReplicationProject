@@ -58,7 +58,7 @@ gather_data <- function(symbols, years){
 #2. Gather daily
 #Rank the stocks by the past industry returns
 #To do this, 1) find the industry returns which is the mean of the past 6 months returns of
-#all the stocks in each industry
+#all the stocks in each industry and 2) rank the industries for each month into Winners and Losers
 
 gather_daily_MG<-function(){
 
@@ -66,11 +66,12 @@ gather_daily_MG<-function(){
 
         #Find industry returns by finding the mean of the returns of all the stocks in each industry
         x<-x %>% group_by(m.ind,date) %>%
-                 mutate(ind_ret = mean(ret.6.0.m))
+                 summarize(ind_ret = mean(ret.6.0.m, na.rm=TRUE)) %>%
+                 select(date, month, m.ind, ind_ret, ret.6.0.m, ret.0.6.m, top.1500)
 
         #arrange(m.ind, date)
         #Get rid of NAs values
-        x <- filter(x, ! is.na(ind_ret))
+        #x <- filter(x, ! is.na(ind_ret))
 
         ## Create ind.class
         daily <- x %>% group_by(date) %>%
@@ -81,7 +82,7 @@ gather_daily_MG<-function(){
                 ungroup()
 
         #get rid of the 2nd class, we only need Winners and Losers to form our portfolio
-        daily<-filter(daily, ind.class=="Winners_MG" & ind.class=="Losers_MG")
+        #daily<-filter(daily, ind.class=="Winners_MG" & ind.class=="Losers_MG")
 
         ## ggplot(data = daily, aes(sd.class, log(sd.252.0.d))) + geom_violin() + facet_wrap(~ year)
 
@@ -94,7 +95,7 @@ View(daily_returns)
 summary(daily_returns)
 
 #3. Gather daily returns into monthly, by selecting the last trading day of the month
-gather_monthly <- function(x){
+gather_monthly<- function(x){
         ## Filter out the last trading day of the month
         monthly <- x %>% group_by(month) %>%
                 filter(min_rank(desc(date)) == 1)

@@ -20,9 +20,10 @@ GH_ratio <- function(){
         return(ratio)
         }
 
-#2. Rank.
+#2. Rank the ratios.
 
 GH_rank<- function() {
+
         r<-GH_ratio()
 
         r<- %>% group_by(date) %>%
@@ -36,9 +37,19 @@ GH_rank<- function() {
         invisible(r)
         }
 
-#3. Then put this into monthly function
-f<-GH_rank()
-s<-gather_monthly(f)
+daily_returns_GH<-GH_rank()
+
+#3. Gather daily returns into monthly, by selecting the last trading day of the month
+gather_monthly <- function(x){
+        ## Filter out the last trading day of the month
+        monthly <- x %>% group_by(month) %>%
+                filter(min_rank(desc(date)) == 1)
+        return(monthly)
+}
+
+monthly_returns_GH<-gather_monthly(daily_returns_GH)
+View(monthly_returns)
+summary(monthly_returns)
 
 #4 Form a portfolio
 
