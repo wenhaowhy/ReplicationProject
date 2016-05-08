@@ -1,4 +1,6 @@
+#MG returns replication
 
+#1. Gather the data
 gather_data <- function(symbols, years){
 
         require(ws.data)
@@ -36,7 +38,7 @@ gather_data <- function(symbols, years){
         #gets rid of 982 lines of code where tret is less than 15
         #filter out only top 1500 companies
         gathered<-filter(gathered,tret<15)
-        gathered<-filter(gathered, top.1500==TRUE)
+        #gathered<-filter(gathered, top.1500==TRUE)
 
         #find past and forward 6 months returns to be used later in calculations of
         # MG and JT strategies
@@ -52,3 +54,49 @@ gather_data <- function(symbols, years){
 
         invisible(gathered)
 }
+
+#2. Gather daily
+#Rank the stocks by the past industry returns
+
+gather_daily_MG<-<- function(){
+
+        x <- gather_data()
+
+        #Find industry returns by finding the mean of the returns of all the stocks in each industry
+        x<-x %>% group_by(m.ind) %>%
+                arrange(m.ind, date)  %>%
+                mutate(ind_ret = mean(ret.6.0.m), na.rm=TRUE) %>%
+
+                #Get rid of NAs values
+                x <- filter(x, top.1500 & ! is.na(ind_ret))
+
+        ## Create ind.class
+        daily <- x %>% group_by(date) %>%
+                mutate(ret.class = as.character(ntile(ind_ret, n = 3))) %>%
+                mutate(ret.class = ifelse(ind.class == "1", "Losers_MG", ind.class)) %>%
+                mutate(ret.class = ifelse(ind.class == "3", "Winners_MG", ind.class)) %>%
+                mutate(ret.class = factor(ind.class, levels = c("Losers_MG", "2", "Winners_MG"))) %>%
+                ungroup()
+
+        ## ggplot(data = daily, aes(sd.class, log(sd.252.0.d))) + geom_violin() + facet_wrap(~ year)
+
+
+        return(daily)
+}
+
+#3. Gather daily returns into monthly, by selecting the last trading day of the month
+gather_monthly <- function(x){
+        ## Filter out the last trading day of the month
+        monthly <- x %>% group_by(month) %>%
+                filter(min_rank(desc(date)) == 1)
+        return(monthly)
+}
+
+monthly_returns<-gather_monthly(daily_returns)
+View(monthly_returns)
+
+
+monthly_returns<-filter(monthly_returns,top.1500==TRUE)
+
+#4. Use monthly data to find the difference between winners and losers
+#Find the difference between the mean returns for Winners and Losers for each month

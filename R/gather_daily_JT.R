@@ -8,7 +8,7 @@ gather_daily_JT <- function(){
 
         x <- filter(x, top.1500 & ! is.na(ret.0.6.m) & ! is.na(ret.6.0.m))
 
-        ## Create sd.class. Should probably do beta.class here as well.
+        ## Rank based on the past 6 month performance
 
         daily <- x %>% group_by(date) %>%
                 mutate(ret.class = as.character(ntile(ret.6.0.m, n = 3))) %>%

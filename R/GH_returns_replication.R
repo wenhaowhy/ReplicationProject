@@ -1,4 +1,6 @@
+#Calculating GH returns
 
+#1. Gather the data
 gather_data <- function(symbols, years){
 
         require(ws.data)
@@ -36,7 +38,7 @@ gather_data <- function(symbols, years){
         #gets rid of 982 lines of code where tret is less than 15
         #filter out only top 1500 companies
         gathered<-filter(gathered,tret<15)
-        gathered<-filter(gathered, top.1500==TRUE)
+        #gathered<-filter(gathered, top.1500==TRUE)
 
         #find past and forward 6 months returns to be used later in calculations of
         # MG and JT strategies
@@ -52,3 +54,16 @@ gather_data <- function(symbols, years){
 
         invisible(gathered)
 }
+
+#2. Rank ratios
+
+
+
+#Find 52 week high ratio
+
+ratio <- x %>% arrange(symbol, date)  %>%
+        group_by(symbol) %>%
+        mutate(price.52.wh = roll_max(price, 252, fill = numeric(0), align="right"))
+        #mutate(52.wh.ratio=price/price_52_wh)
+View(ratio)
+?roll_max
