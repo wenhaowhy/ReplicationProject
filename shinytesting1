@@ -1,0 +1,61 @@
+#
+# This is the user-interface definition of a Shiny web application. You can
+# run the application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+# 
+#    http://shiny.rstudio.com/
+#
+
+library(shiny)
+
+# Define UI for application that draws a histogram
+shinyUI(fluidPage(
+  
+  # Application title
+  titlePanel("Filters"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+       
+      selectInput(
+        "select", label= h3("Industry"), choices = c("All", unique(monthly_returns$m.ind)), multiple = TRUE, selectize = TRUE)
+      
+    ),
+    
+ 
+    
+    # Show a plot of the generated distribution
+    mainPanel(
+       plotOutput("plot", height = 700, width = 1000)
+
+  
+  
+    )
+  )
+))
+
+
+
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+
+shinyServer(function(input, output) {
+  output$plot <- renderPlot({
+    
+
+  if (input$m.ind == "All"){}
+    else{
+          monthly_returns<- monthly_returns %>%
+            filter(m.ind == input$industry)
+    }  
+    
+
+
+  })
+  
+})
+        
